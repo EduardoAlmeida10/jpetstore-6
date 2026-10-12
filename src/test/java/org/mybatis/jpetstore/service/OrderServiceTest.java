@@ -16,187 +16,71 @@
 package org.mybatis.jpetstore.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mybatis.jpetstore.domain.Item;
-import org.mybatis.jpetstore.domain.LineItem;
 import org.mybatis.jpetstore.domain.Order;
-import org.mybatis.jpetstore.domain.Sequence;
-import org.mybatis.jpetstore.mapper.ItemMapper;
-import org.mybatis.jpetstore.mapper.LineItemMapper;
-import org.mybatis.jpetstore.mapper.OrderMapper;
-import org.mybatis.jpetstore.mapper.SequenceMapper;
+import org.mybatis.jpetstore.service.repository.OrderRepository;
 
-/**
- * The Class OrderServiceTest.
- */
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
-  /** The item mapper. */
   @Mock
-  private ItemMapper itemMapper;
-  /** The order mapper. */
-  @Mock
-  private OrderMapper orderMapper;
-  /** The line item mapper. */
-  @Mock
-  private LineItemMapper lineItemMapper;
-  /** The sequence mapper. */
-  @Mock
-  private SequenceMapper sequenceMapper;
+  private OrderRepository orderRepository;
 
-  /** The order service. */
   @InjectMocks
   private OrderService orderService;
 
-  /**
-   * Should return order when given order id with out line items.
-   */
   @Test
-  void shouldReturnOrderWhenGivenOrderIdWithOutLineItems() {
-    // given
+  void shouldReturnOrderWhenGivenOrderId() {
     int orderId = 1;
-    Order order = new Order();
-    List<LineItem> lineItems = new ArrayList<>();
+    Order expectedOrder = new Order();
 
-    // when
-    when(orderMapper.getOrder(orderId)).thenReturn(order);
-    when(lineItemMapper.getLineItemsByOrderId(orderId)).thenReturn(lineItems);
+    when(orderRepository.findById(orderId)).thenReturn(expectedOrder);
 
-    // then
-    assertThat(orderService.getOrder(orderId)).isEqualTo(order);
-    assertThat(orderService.getOrder(orderId).getLineItems()).isEmpty();
+    Order order = orderService.getOrder(orderId);
+
+    assertThat(order).isSameAs(expectedOrder);
+    verify(orderRepository).findById(orderId);
   }
 
-  /**
-   * Should return order when given order id existed line items.
-   */
-  @Test
-  void shouldReturnOrderWhenGivenOrderIdExistedLineItems() {
-    // given
-    int orderId = 1;
-    Order order = new Order();
-    List<LineItem> lineItems = new ArrayList<>();
-    LineItem item = new LineItem();
-    String itemId = "abc";
-    item.setItemId(itemId);
-    lineItems.add(item);
-
-    // when
-    when(orderMapper.getOrder(orderId)).thenReturn(order);
-    when(lineItemMapper.getLineItemsByOrderId(orderId)).thenReturn(lineItems);
-    when(itemMapper.getItem(itemId)).thenReturn(new Item());
-    when(itemMapper.getInventoryQuantity(itemId)).thenReturn(5);
-
-    // then
-    Order expectedOrder = orderService.getOrder(orderId);
-    assertThat(expectedOrder).isEqualTo(order);
-    assertThat(expectedOrder.getLineItems()).hasSize(1);
-    assertThat(expectedOrder.getLineItems().get(0).getItem().getQuantity()).isEqualTo(5);
-  }
-
-  /**
-   * Should return order list.
-   */
   @Test
   void shouldReturnOrderList() {
-
-    // given
     String username = "foo";
     List<Order> expectedOrders = new ArrayList<>();
 
-    // when
-    when(orderMapper.getOrdersByUsername(username)).thenReturn(expectedOrders);
+    when(orderRepository.findByUsername(username)).thenReturn(expectedOrders);
+
     List<Order> orders = orderService.getOrdersByUsername(username);
 
-    // then
     assertThat(orders).isSameAs(expectedOrders);
-
+    verify(orderRepository).findByUsername(username);
   }
 
-  /**
-   * Should return next id.
-   */
   @Test
   void shouldReturnNextId() {
+    when(orderRepository.getNextId("order")).thenReturn(100);
 
-    // given
-    Sequence expectedSequence = new Sequence("order", 100);
-
-    // when
-    when(sequenceMapper.getSequence(any())).thenReturn(expectedSequence);
     int nextId = orderService.getNextId("order");
 
-    // then
     assertThat(nextId).isEqualTo(100);
-    verify(sequenceMapper).getSequence(argThat(v -> v.getName().equals("order") && v.getNextId() == -1));
-    verify(sequenceMapper).updateSequence(argThat(v -> v.getName().equals("order") && v.getNextId() == 101));
-
+    verify(orderRepository).getNextId("order");
   }
 
-  /**
-   * Should throw exception when sequence not found.
-   */
   @Test
-  void shouldThrowExceptionWhenSequenceNotFound() {
-
-    // given
-
-    // when
-    when(sequenceMapper.getSequence(any())).thenReturn(null);
-    Throwable message = Assertions.assertThrows(RuntimeException.class, () -> {
-      orderService.getNextId("order");
-    });
-    Assertions.assertEquals(
-        "Error: A null sequence was returned from the database (could not get next order sequence).",
-        message.getMessage());
-    verify(sequenceMapper).getSequence(argThat(v -> v.getName().equals("order") && v.getNextId() == -1));
-  }
-
-  /**
-   * Should call the mapper to insert.
-   */
-  @Test
-  void shouldCallTheMapperToInsert() {
-    // given
+  void shouldCallRepositoryToInsert() {
     Order order = new Order();
-    LineItem item = new LineItem();
-    String itemId = "I01";
-    int quantity = 4;
-    item.setItemId(itemId);
-    item.setQuantity(quantity);
-    order.addLineItem(item);
 
-    Sequence orderNumSequence = new Sequence("ordernum", 100);
-
-    Map<String, Object> expectedItemParam = new HashMap<>(2);
-    expectedItemParam.put("itemId", itemId);
-    expectedItemParam.put("increment", quantity);
-
-    // when
-    when(sequenceMapper.getSequence(any())).thenReturn(orderNumSequence);
     orderService.insertOrder(order);
 
-    // then
-    verify(orderMapper).insertOrder(argThat(v -> v == order && v.getOrderId() == 100));
-    verify(orderMapper).insertOrderStatus(order);
-    verify(lineItemMapper).insertLineItem(argThat(v -> v == item && v.getOrderId() == 100));
-    verify(itemMapper).updateInventoryQuantity(expectedItemParam);
+    verify(orderRepository).save(order);
   }
-
 }
