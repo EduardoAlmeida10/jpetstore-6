@@ -32,7 +32,7 @@ class OrderTest {
    * Init order.
    */
   @Test
-  void initOrder() {
+  void buildOrder() {
     // given
     Account account = new Account();
     account.setUsername("mybatis");
@@ -55,10 +55,7 @@ class OrderTest {
     cart.addItem(item, true);
     cart.addItem(item, true);
 
-    Order order = new Order();
-
-    // when
-    order.initOrder(account, cart);
+    Order order = new OrderBuilder().fromAccount(account).fromCart(cart).withDefaults().build();
 
     // then
     assertThat(order.getUsername()).isSameAs(account.getUsername());
