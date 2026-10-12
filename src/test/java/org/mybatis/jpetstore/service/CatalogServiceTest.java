@@ -16,14 +16,15 @@
 package org.mybatis.jpetstore.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mock.Strictness;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,6 +34,7 @@ import org.mybatis.jpetstore.domain.Product;
 import org.mybatis.jpetstore.mapper.CategoryMapper;
 import org.mybatis.jpetstore.mapper.ItemMapper;
 import org.mybatis.jpetstore.mapper.ProductMapper;
+import org.mybatis.jpetstore.service.search.ProductSearchStrategy;
 
 /**
  * The Class CatalogServiceTest.
@@ -51,30 +53,34 @@ class CatalogServiceTest {
   private ItemMapper itemMapper;
 
   /** The catalog service. */
-  @InjectMocks
+  @Mock
+  private ProductSearchStrategy keywordSearchStrategy;
+
+  @Mock
+  private ProductSearchStrategy categorySearchStrategy;
+
   private CatalogService catalogService;
+
+  @BeforeEach
+  void setUp() {
+    catalogService = new CatalogService(categoryMapper, itemMapper, productMapper, keywordSearchStrategy,
+        categorySearchStrategy);
+  }
 
   /**
    * Should call the search mapper twice.
    */
   @Test
-  void shouldCallTheSearchMapperTwice() {
-    // given
-    String keywords = "a b";
-    List<Product> l1 = new ArrayList<>();
-    l1.add(new Product());
-    List<Product> l2 = new ArrayList<>();
-    l2.add(new Product());
+  void shouldDelegateKeywordSearchToStrategy() {
+    String keywords = "fish dog";
+    List<Product> expectedProducts = new ArrayList<>();
 
-    // when
-    when(productMapper.searchProductList("%a%")).thenReturn(l1);
-    when(productMapper.searchProductList("%b%")).thenReturn(l2);
-    List<Product> r = catalogService.searchProductList(keywords);
+    when(keywordSearchStrategy.search(keywords)).thenReturn(expectedProducts);
 
-    // then
-    assertThat(r).hasSize(2);
-    assertThat(r.get(0)).isSameAs(l1.get(0));
-    assertThat(r.get(1)).isSameAs(l2.get(0));
+    List<Product> products = catalogService.searchProductList(keywords);
+
+    assertThat(products).isSameAs(expectedProducts);
+    verify(keywordSearchStrategy).search(keywords);
   }
 
   /**
@@ -136,17 +142,15 @@ class CatalogServiceTest {
    */
   @Test
   void shouldReturnProductList() {
-    // given
-    String categoryId = "C01";
+    String categoryId = "DOGS";
     List<Product> expectedProducts = new ArrayList<>();
 
-    // when
-    when(productMapper.getProductListByCategory(categoryId)).thenReturn(expectedProducts);
+    when(categorySearchStrategy.search(categoryId)).thenReturn(expectedProducts);
+
     List<Product> products = catalogService.getProductListByCategory(categoryId);
 
-    // then
     assertThat(products).isSameAs(expectedProducts);
-
+    verify(categorySearchStrategy).search(categoryId);
   }
 
   /**
@@ -221,5 +225,4 @@ class CatalogServiceTest {
     assertThat(result).isFalse();
 
   }
-
 }
