@@ -25,6 +25,10 @@ import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
 import org.mybatis.jpetstore.domain.OrderBuilder;
 import org.mybatis.jpetstore.service.OrderService;
+import org.mybatis.jpetstore.web.checkout.CheckoutContext;
+import org.mybatis.jpetstore.web.checkout.ConfirmationCheckoutState;
+import org.mybatis.jpetstore.web.checkout.ShippingCheckoutState;
+import org.mybatis.jpetstore.web.checkout.SubmittedCheckoutState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -144,16 +148,9 @@ public class OrderController {
     // When confirming, use the session order directly - the confirm form only
     // submits confirmed=true with no other fields, so @ModelAttribute Order is empty
     if (confirmed) {
-      if (sessionOrder != null) {
-        orderService.insertOrder(sessionOrder);
-        session.setAttribute("cart", new Cart());
-        model.addAttribute("message", "Thank you, your order has been submitted.");
-        model.addAttribute("order", sessionOrder);
-        return VIEW_ORDER_VIEW;
-      } else {
-        model.addAttribute("message", "An error occurred processing your order (order was null).");
-        return ERROR_VIEW;
-      }
+      CheckoutContext context = new CheckoutContext(orderService, session, model, sessionOrder);
+
+      return context.transitionTo(new SubmittedCheckoutState());
     }
 
     if (sessionOrder != null) {
@@ -195,15 +192,13 @@ public class OrderController {
       order = sessionOrder;
     }
 
+    CheckoutContext context = new CheckoutContext(orderService, session, model, order);
+
     if (shippingAddressRequired) {
-      session.setAttribute("order", order);
-      model.addAttribute("order", order);
-      return SHIPPING_VIEW;
-    } else {
-      session.setAttribute("order", order);
-      model.addAttribute("order", order);
-      return CONFIRM_VIEW;
+      return context.transitionTo(new ShippingCheckoutState());
     }
+
+    return context.transitionTo(new ConfirmationCheckoutState());
   }
 
   /**
