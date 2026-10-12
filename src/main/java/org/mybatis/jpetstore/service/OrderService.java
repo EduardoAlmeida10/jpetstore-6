@@ -15,17 +15,10 @@
  */
 package org.mybatis.jpetstore.service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import org.mybatis.jpetstore.domain.Item;
 import org.mybatis.jpetstore.domain.Order;
-import org.mybatis.jpetstore.domain.Sequence;
-import org.mybatis.jpetstore.mapper.ItemMapper;
-import org.mybatis.jpetstore.mapper.LineItemMapper;
-import org.mybatis.jpetstore.mapper.OrderMapper;
-import org.mybatis.jpetstore.mapper.SequenceMapper;
+import org.mybatis.jpetstore.service.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,113 +27,28 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class OrderService {
+  private final OrderRepository orderRepository;
 
-  /** The item mapper. */
-  private final ItemMapper itemMapper;
-  /** The order mapper. */
-  private final OrderMapper orderMapper;
-  /** The sequence mapper. */
-  private final SequenceMapper sequenceMapper;
-  /** The line item mapper. */
-  private final LineItemMapper lineItemMapper;
-
-  /**
-   * Instantiates a new order service.
-   *
-   * @param itemMapper
-   *          the item mapper
-   * @param orderMapper
-   *          the order mapper
-   * @param sequenceMapper
-   *          the sequence mapper
-   * @param lineItemMapper
-   *          the line item mapper
-   */
-  public OrderService(ItemMapper itemMapper, OrderMapper orderMapper, SequenceMapper sequenceMapper,
-      LineItemMapper lineItemMapper) {
-    this.itemMapper = itemMapper;
-    this.orderMapper = orderMapper;
-    this.sequenceMapper = sequenceMapper;
-    this.lineItemMapper = lineItemMapper;
+  public OrderService(OrderRepository orderRepository) {
+    this.orderRepository = orderRepository;
   }
 
-  /**
-   * Insert order.
-   *
-   * @param order
-   *          the order
-   */
   @Transactional
   public void insertOrder(Order order) {
-    order.setOrderId(getNextId("ordernum"));
-    order.getLineItems().forEach(lineItem -> {
-      String itemId = lineItem.getItemId();
-      Integer increment = lineItem.getQuantity();
-      Map<String, Object> param = new HashMap<>(2);
-      param.put("itemId", itemId);
-      param.put("increment", increment);
-      itemMapper.updateInventoryQuantity(param);
-    });
-
-    orderMapper.insertOrder(order);
-    orderMapper.insertOrderStatus(order);
-    order.getLineItems().forEach(lineItem -> {
-      lineItem.setOrderId(order.getOrderId());
-      lineItemMapper.insertLineItem(lineItem);
-    });
+    orderRepository.save(order);
   }
 
-  /**
-   * Gets the order.
-   *
-   * @param orderId
-   *          the order id
-   *
-   * @return the order
-   */
   @Transactional
   public Order getOrder(int orderId) {
-    Order order = orderMapper.getOrder(orderId);
-    order.setLineItems(lineItemMapper.getLineItemsByOrderId(orderId));
-
-    order.getLineItems().forEach(lineItem -> {
-      Item item = itemMapper.getItem(lineItem.getItemId());
-      item.setQuantity(itemMapper.getInventoryQuantity(lineItem.getItemId()));
-      lineItem.setItem(item);
-    });
-
-    return order;
+    return orderRepository.findById(orderId);
   }
 
-  /**
-   * Gets the orders by username.
-   *
-   * @param username
-   *          the username
-   *
-   * @return the orders by username
-   */
   public List<Order> getOrdersByUsername(String username) {
-    return orderMapper.getOrdersByUsername(username);
+    return orderRepository.findByUsername(username);
   }
 
-  /**
-   * Gets the next id.
-   *
-   * @param name
-   *          the name
-   *
-   * @return the next id
-   */
   public int getNextId(String name) {
-    Sequence sequence = sequenceMapper.getSequence(new Sequence(name, -1));
-    if (sequence == null) {
-      throw new IllegalArgumentException(
-          "Error: A null sequence was returned from the database (could not get next " + name + " sequence).");
-    }
-    Sequence parameterObject = new Sequence(name, sequence.getNextId() + 1);
-    sequenceMapper.updateSequence(parameterObject);
-    return sequence.getNextId();
+    return orderRepository.getNextId(name);
   }
 
 }
