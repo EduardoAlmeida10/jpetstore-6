@@ -23,6 +23,7 @@ import javax.servlet.http.HttpSession;
 
 import org.mybatis.jpetstore.domain.Cart;
 import org.mybatis.jpetstore.domain.Order;
+import org.mybatis.jpetstore.domain.OrderBuilder;
 import org.mybatis.jpetstore.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -107,8 +108,7 @@ public class OrderController {
       return "redirect:/account";
     }
     if (cart != null) {
-      Order order = new Order();
-      order.initOrder(accountSession.getAccount(), cart);
+      Order order = new OrderBuilder().fromAccount(accountSession.getAccount()).fromCart(cart).withDefaults().build();
       session.setAttribute("order", order);
       model.addAttribute("order", order);
       model.addAttribute("creditCardTypes", CARD_TYPE_LIST);
