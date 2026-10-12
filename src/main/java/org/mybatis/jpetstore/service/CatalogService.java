@@ -15,7 +15,6 @@
  */
 package org.mybatis.jpetstore.service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.mybatis.jpetstore.domain.Category;
@@ -24,6 +23,8 @@ import org.mybatis.jpetstore.domain.Product;
 import org.mybatis.jpetstore.mapper.CategoryMapper;
 import org.mybatis.jpetstore.mapper.ItemMapper;
 import org.mybatis.jpetstore.mapper.ProductMapper;
+import org.mybatis.jpetstore.service.search.ProductSearchStrategy;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
@@ -39,6 +40,9 @@ public class CatalogService {
   /** The product mapper. */
   private final ProductMapper productMapper;
 
+  private final ProductSearchStrategy keywordSearchStrategy;
+  private final ProductSearchStrategy categorySearchStrategy;
+
   /**
    * Instantiates a new catalog service.
    *
@@ -49,10 +53,15 @@ public class CatalogService {
    * @param productMapper
    *          the product mapper
    */
-  public CatalogService(CategoryMapper categoryMapper, ItemMapper itemMapper, ProductMapper productMapper) {
+  public CatalogService(CategoryMapper categoryMapper, ItemMapper itemMapper, ProductMapper productMapper,
+      @Qualifier("keywordProductSearchStrategy") ProductSearchStrategy keywordSearchStrategy,
+      @Qualifier("categoryProductSearchStrategy") ProductSearchStrategy categorySearchStrategy) {
+
     this.categoryMapper = categoryMapper;
     this.itemMapper = itemMapper;
     this.productMapper = productMapper;
+    this.keywordSearchStrategy = keywordSearchStrategy;
+    this.categorySearchStrategy = categorySearchStrategy;
   }
 
   /**
@@ -97,7 +106,7 @@ public class CatalogService {
    * @return the list
    */
   public List<Product> getProductListByCategory(String categoryId) {
-    return productMapper.getProductListByCategory(categoryId);
+    return categorySearchStrategy.search(categoryId);
   }
 
   /**
@@ -109,11 +118,7 @@ public class CatalogService {
    * @return the list
    */
   public List<Product> searchProductList(String keywords) {
-    List<Product> products = new ArrayList<>();
-    for (String keyword : keywords.split("\\s+")) {
-      products.addAll(productMapper.searchProductList("%" + keyword.toLowerCase() + "%"));
-    }
-    return products;
+    return keywordSearchStrategy.search(keywords);
   }
 
   /**
