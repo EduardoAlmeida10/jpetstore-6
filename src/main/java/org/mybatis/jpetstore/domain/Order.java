@@ -18,10 +18,8 @@ package org.mybatis.jpetstore.domain;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -608,45 +606,6 @@ public class Order implements Serializable {
    * @param cart
    *          the cart
    */
-  public void initOrder(Account account, Cart cart) {
-
-    username = account.getUsername();
-    orderDate = LocalDateTime.now(ZoneId.systemDefault());
-
-    shipToFirstName = account.getFirstName();
-    shipToLastName = account.getLastName();
-    shipAddress1 = account.getAddress1();
-    shipAddress2 = account.getAddress2();
-    shipCity = account.getCity();
-    shipState = account.getState();
-    shipZip = account.getZip();
-    shipCountry = account.getCountry();
-
-    billToFirstName = account.getFirstName();
-    billToLastName = account.getLastName();
-    billAddress1 = account.getAddress1();
-    billAddress2 = account.getAddress2();
-    billCity = account.getCity();
-    billState = account.getState();
-    billZip = account.getZip();
-    billCountry = account.getCountry();
-
-    totalPrice = cart.getSubTotal();
-
-    creditCard = "999 9999 9999 9999";
-    expiryDate = "12/03";
-    cardType = "Visa";
-    courier = "UPS";
-    locale = "CA";
-    status = "P";
-
-    Iterator<CartItem> i = cart.getAllCartItems();
-    while (i.hasNext()) {
-      CartItem cartItem = i.next();
-      addLineItem(cartItem);
-    }
-
-  }
 
   /**
    * Add line item.
